@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>llm-image-translator 任务</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <main class="panel">
+    <header class="panel-header">
+      <div>
+        <p class="eyebrow">任务面板</p>
+        <h1>当前页图片翻译</h1>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggleButton" type="button">切换深色</button>
+        <button id="refreshButton">刷新</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="service-switcher">
+        <label class="service-switcher-label" for="serviceSelect">翻译服务</label>
+        <div class="service-switcher-row">
+          <select id="serviceSelect"></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="excludeSiteButton">排除当前网站</button>
+        <button id="restoreAllButton">恢复全部原图</button>
+        <button id="openOptionsButton">打开设置页</button>
+      </div>
+      <p id="summaryText" class="summary">等待扫描页面图片。</p>
+    </section>
+
+    <section class="card">
+      <h2>最近任务</h2>
+      <div id="taskList" class="task-list"></div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
