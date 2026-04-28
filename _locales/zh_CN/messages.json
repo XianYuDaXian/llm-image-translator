@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "LLM图片翻译助手"
+  },
+  "extDescription": {
+    "message": "悬浮翻译网页图片，兼容多种 OpenAI 兼容端点。"
+  }
+}

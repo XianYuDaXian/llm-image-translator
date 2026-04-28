@@ -2,6 +2,9 @@
   const {
     MESSAGE_TYPES,
     mergeSettings,
+    t,
+    getOptionLabel,
+    applyI18n,
     normalizeExcludedSites,
     PROVIDER_TYPE_OPTIONS
   } = globalThis.AppShared;
@@ -15,6 +18,8 @@
 
   async function init() {
     cacheElements();
+    applyI18n(document);
+    document.title = t("sidepanelPageTitle");
     bindEvents();
     await resolveCurrentTab();
     await refreshState();
@@ -72,10 +77,15 @@
     const completed = tasks.filter((item) => item.status === "completed").length;
     const running = tasks.filter((item) => item.status === "running" || item.status === "queued").length;
     const failed = tasks.filter((item) => item.status === "failed").length;
-    elements.summaryText.textContent = `本页任务：${tasks.length}，处理中 ${running}，已完成 ${completed}，失败 ${failed}`;
+    elements.summaryText.textContent = t("sidepanelSummary", {
+      total: tasks.length,
+      running,
+      completed,
+      failed
+    });
     elements.taskList.innerHTML = tasks.length
       ? tasks.map(renderTask).join("")
-      : `<div class="task-item"><strong>暂无任务</strong><div class="task-meta"><span>将鼠标移到页面图片上点击“翻译图片”。</span></div></div>`;
+      : `<div class="task-item"><strong>${escapeHtml(t("sidepanelNoTaskTitle"))}</strong><div class="task-meta"><span>${escapeHtml(t("sidepanelNoTaskHint"))}</span></div></div>`;
     bindTaskActions();
   }
 
@@ -83,28 +93,28 @@
     const host = getCurrentHost();
     if (!host) {
       elements.excludeSiteButton.disabled = true;
-      elements.excludeSiteButton.textContent = "无法排除当前网站";
+      elements.excludeSiteButton.textContent = t("sidepanelCannotExcludeSite");
       return;
     }
     elements.excludeSiteButton.disabled = false;
     elements.excludeSiteButton.textContent = isHostExcluded(host)
-      ? "取消排除当前网站"
-      : "排除当前网站";
+      ? t("sidepanelIncludeCurrentSite")
+      : t("sidepanelExcludeCurrentSite");
     elements.excludeSiteButton.title = isHostExcluded(host)
-      ? `当前网站 ${host} 已被排除。点击后恢复翻译。`
-      : `点击后不再翻译当前网站 ${host} 的图片。`;
+      ? t("sidepanelExcludedSiteTitle", { host })
+      : t("sidepanelExcludeSiteTitle", { host });
   }
 
   function applyTheme() {
     const theme = currentSettings?.sidepanelTheme === "dark" ? "dark" : "light";
     document.body.dataset.theme = theme;
-    elements.themeToggleButton.textContent = theme === "dark" ? "切换浅色" : "切换深色";
+    elements.themeToggleButton.textContent = theme === "dark" ? t("sidepanelThemeToLight") : t("sidepanelThemeToDark");
   }
 
   function renderServiceSwitcher() {
     const profiles = currentSettings?.serviceProfiles || [];
     if (!profiles.length) {
-      elements.serviceSelect.innerHTML = `<option value="">暂无可用服务</option>`;
+      elements.serviceSelect.innerHTML = `<option value="">${escapeHtml(t("serviceUnavailable"))}</option>`;
       elements.serviceSelect.disabled = true;
       return;
     }
@@ -113,8 +123,8 @@
     elements.serviceSelect.innerHTML = groupedProfiles.map(renderServiceGroup).join("");
     elements.serviceSelect.disabled = profiles.length <= 1;
     elements.serviceSelect.title = profiles.length <= 1
-      ? "请先到设置页添加更多翻译服务。"
-      : "切换当前页使用的翻译服务。";
+      ? t("serviceSwitchHintNeedMore")
+      : t("serviceSwitchHintChange");
   }
 
   function groupServicesByProvider(profiles) {
@@ -151,7 +161,8 @@
   }
 
   function getProviderLabel(providerType) {
-    return PROVIDER_TYPE_OPTIONS.find((item) => item.value === providerType)?.label || "未分类服务";
+    const option = PROVIDER_TYPE_OPTIONS.find((item) => item.value === providerType);
+    return option ? getOptionLabel(option) : t("serviceUncategorized");
   }
 
   function renderTask(task) {
@@ -159,16 +170,16 @@
     const previewUrl = task.resultUrl || task.imageUrl || "";
     return `
       <article class="task-item" data-image-id="${task.imageId}" data-image-url="${escapeHtml(task.imageUrl || "")}">
-        ${previewUrl ? `<div class="task-preview"><img src="${escapeAttribute(previewUrl)}" alt="任务预览"></div>` : ""}
+        ${previewUrl ? `<div class="task-preview"><img src="${escapeAttribute(previewUrl)}" alt="${escapeAttribute(t("taskPreviewAlt"))}"></div>` : ""}
         <strong>${escapeHtml(title)}</strong>
         <div class="task-meta">
-          <span>状态：${escapeHtml(task.status)}</span>
-          <span>尝试次数：${task.attempts || 0}</span>
+          <span>${escapeHtml(t("taskStatus", { status: task.status }))}</span>
+          <span>${escapeHtml(t("taskAttempts", { count: task.attempts || 0 }))}</span>
         </div>
         ${task.errorMessage ? `<p class="summary">${escapeHtml(task.errorMessage)}</p>` : ""}
         <div class="task-actions">
-          <button data-action="retry">重试</button>
-          <button data-action="restore">恢复原图</button>
+          <button data-action="retry">${escapeHtml(t("taskRetry"))}</button>
+          <button data-action="restore">${escapeHtml(t("taskRestore"))}</button>
         </div>
       </article>
     `;

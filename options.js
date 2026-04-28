@@ -7,6 +7,11 @@
     TARGET_LANGUAGE_OPTIONS,
     MESSAGE_TYPES,
     mergeSettings,
+    t,
+    getOptionLabel,
+    applyI18n,
+    getDefaultPrompt,
+    isBuiltInPrompt,
     normalizeExcludedSites,
     safeJsonParse,
     createServiceProfile
@@ -20,6 +25,8 @@
 
   async function init() {
     cacheElements();
+    applyI18n(document);
+    document.title = t("optionsPageTitle");
     renderProviderOptions();
     renderEndpointOptions();
     renderRequestFormatOptions();
@@ -27,6 +34,14 @@
     bindEvents();
     await loadSettings();
     render();
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local" || !changes.settings) {
+        return;
+      }
+      settings = mergeSettings(changes.settings.newValue);
+      selectedServiceId = settings.activeServiceId || settings.serviceProfiles[0]?.id;
+      render();
+    });
   }
 
   function cacheElements() {
@@ -78,19 +93,19 @@
   }
 
   function renderProviderOptions() {
-    elements.providerType.innerHTML = PROVIDER_TYPE_OPTIONS.map((item) => `<option value="${item.value}">${item.label}</option>`).join("");
+    elements.providerType.innerHTML = PROVIDER_TYPE_OPTIONS.map((item) => `<option value="${item.value}">${getOptionLabel(item)}</option>`).join("");
   }
 
   function renderEndpointOptions() {
-    elements.endpointMode.innerHTML = ENDPOINT_MODE_OPTIONS.map((item) => `<option value="${item.value}">${item.label}</option>`).join("");
+    elements.endpointMode.innerHTML = ENDPOINT_MODE_OPTIONS.map((item) => `<option value="${item.value}">${getOptionLabel(item)}</option>`).join("");
   }
 
   function renderRequestFormatOptions() {
-    elements.requestFormat.innerHTML = REQUEST_FORMAT_OPTIONS.map((item) => `<option value="${item.value}">${item.label}</option>`).join("");
+    elements.requestFormat.innerHTML = REQUEST_FORMAT_OPTIONS.map((item) => `<option value="${item.value}">${getOptionLabel(item)}</option>`).join("");
   }
 
   function renderTargetLanguageOptions() {
-    elements.targetLanguagePreset.innerHTML = TARGET_LANGUAGE_OPTIONS.map((item) => `<option value="${item.value}">${item.label}</option>`).join("");
+    elements.targetLanguagePreset.innerHTML = TARGET_LANGUAGE_OPTIONS.map((item) => `<option value="${item.value}">${getOptionLabel(item)}</option>`).join("");
   }
 
   function bindEvents() {
@@ -120,10 +135,16 @@
   }
 
   function render() {
+    applyTheme();
     renderServiceList();
     renderSelectedService();
     renderGlobalFields();
     renderTestViews();
+  }
+
+  function applyTheme() {
+    const theme = settings?.sidepanelTheme === "dark" ? "dark" : "light";
+    document.body.dataset.theme = theme;
   }
 
   function renderServiceList() {
@@ -134,11 +155,11 @@
         <article class="service-item" data-service-id="${service.id}" data-selected="${selected ? "true" : "false"}">
           <div class="service-item-head">
             <div class="service-item-name">${escapeHtml(service.name)}</div>
-            ${isDefault ? `<span class="service-badge">当前默认</span>` : ""}
+            ${isDefault ? `<span class="service-badge">${escapeHtml(t("serviceDefaultBadge"))}</span>` : ""}
           </div>
           <div class="service-item-meta">
             <span>${escapeHtml(getProviderLabel(service.providerType))}</span>
-            <span>${service.enabled ? "已启用" : "已停用"}</span>
+            <span>${escapeHtml(service.enabled ? t("serviceEnabledState") : t("serviceDisabledState"))}</span>
           </div>
         </article>
       `;
@@ -178,7 +199,9 @@
 
   function renderGlobalFields() {
     elements.concurrency.value = settings.concurrency;
-    elements.translatePromptTemplate.value = settings.translatePromptTemplate;
+    elements.translatePromptTemplate.value = !settings.translatePromptTemplate || isBuiltInPrompt(settings.translatePromptTemplate)
+      ? getDefaultPrompt()
+      : settings.translatePromptTemplate;
     elements.requestTimeoutMs.value = settings.requestTimeoutMs;
     elements.maxImageMegabytes.value = settings.maxImageMegabytes;
     elements.hoverButtonEnabled.checked = Boolean(settings.hoverButtonEnabled);
@@ -199,16 +222,18 @@
   }
 
   function renderTestViews() {
-    const latest = settings.lastCapabilityTestResult || settings.lastConnectivityTestResult || { message: "暂无测试结果" };
+    const latest = settings.lastCapabilityTestResult || settings.lastConnectivityTestResult || { message: t("noTestResult") };
     elements.resultView.textContent = JSON.stringify(latest, null, 2);
     elements.previewView.textContent = JSON.stringify(latest.preview || buildPreviewSource(buildSelectedServiceSettings()), null, 2);
     elements.originalPreview.src = chrome.runtime.getURL("testimage.png");
+    elements.originalPreview.alt = t("testOriginalImageAlt");
     elements.translatedPreview.src = latest.translatedPreviewUrl || "";
+    elements.translatedPreview.alt = t("translatedResultAlt");
   }
 
   function addService() {
     const newService = createServiceProfile({
-      name: `自定义服务 ${settings.serviceProfiles.length + 1}`,
+      name: t("customServiceName", { index: settings.serviceProfiles.length + 1 }),
       providerType: "openai_compatible_image"
     });
     settings.serviceProfiles = [...settings.serviceProfiles, newService];
@@ -226,17 +251,20 @@
     settings.serviceProfiles = [...settings.serviceProfiles, duplicated];
     selectedServiceId = duplicated.id;
     render();
-    setStatus(`已复制“${service.name}”，并生成副本“${duplicated.name}”。`);
+    setStatus(t("statusDuplicatedService", {
+      source: service.name,
+      target: duplicated.name
+    }));
   }
 
   function buildDuplicatedServiceName(baseName) {
-    const trimmedName = (baseName || "服务").trim();
+    const trimmedName = (baseName || t("genericServiceName")).trim();
     const existingNames = new Set(settings.serviceProfiles.map((item) => item.name));
     let index = 1;
-    let nextName = `${trimmedName} 副本`;
+    let nextName = `${trimmedName} ${t("duplicateSuffix")}`;
     while (existingNames.has(nextName)) {
       index += 1;
-      nextName = `${trimmedName} 副本 ${index}`;
+      nextName = `${trimmedName} ${t("duplicateSuffix")} ${index}`;
     }
     return nextName;
   }
@@ -246,12 +274,12 @@
     updateService(service);
     settings.activeServiceId = service.id;
     render();
-    setStatus(`已将“${service.name}”设为默认服务。`);
+    setStatus(t("statusSetDefault", { name: service.name }));
   }
 
   function deleteSelectedService() {
     if (settings.serviceProfiles.length <= 1) {
-      setStatus("至少需要保留一个服务。", true);
+      setStatus(t("statusNeedKeepOneService"), true);
       return;
     }
 
@@ -262,7 +290,7 @@
     }
     selectedServiceId = settings.activeServiceId;
     render();
-    setStatus(`已删除“${service.name}”。`);
+    setStatus(t("statusDeletedService", { name: service.name }));
   }
 
   function onProviderTypeChange() {
@@ -331,7 +359,7 @@
     const current = getSelectedService();
     const parsedHeaders = safeJsonParse(elements.customHeaders.value.trim() || "[]", options.keepInvalidHeaders ? [] : null);
     if (!options.keepInvalidHeaders && !parsedHeaders) {
-      throw new Error("Custom Headers 必须是合法 JSON 数组");
+      throw new Error(t("fileInvalidHeaders"));
     }
     return createServiceProfile({
       ...current,
@@ -395,13 +423,13 @@
         payload: settings
       });
       if (!response?.ok) {
-        throw new Error(response?.error?.message || "保存失败");
+        throw new Error(response?.error?.message || t("statusSaveFailed"));
       }
       await loadSettings();
       render();
-      setStatus("设置已保存。");
+      setStatus(t("statusSaved"));
     } catch (error) {
-      setStatus(error.message || "保存失败", true);
+      setStatus(error.message || t("statusSaveFailed"), true);
     }
   }
 
@@ -417,12 +445,12 @@
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "image-translator-config.json";
+      anchor.download = t("fileNameConfig");
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setStatus("配置已导出。");
+      setStatus(t("statusExported"));
     } catch (error) {
-      setStatus(error.message || "导出配置失败", true);
+      setStatus(error.message || t("statusExportFailed"), true);
     }
   }
 
@@ -436,14 +464,14 @@
       const text = await file.text();
       const parsed = safeJsonParse(text, null);
       if (!parsed?.settings) {
-        throw new Error("配置文件格式无效");
+        throw new Error(t("statusImportInvalid"));
       }
       settings = mergeSettings(parsed.settings);
       selectedServiceId = settings.activeServiceId || settings.serviceProfiles[0]?.id;
       render();
-      setStatus("配置已导入，请确认后保存。");
+      setStatus(t("statusImportReady"));
     } catch (error) {
-      setStatus(error.message || "导入配置失败", true);
+      setStatus(error.message || t("statusImportFailed"), true);
     } finally {
       elements.importConfigInput.value = "";
     }
@@ -454,10 +482,10 @@
       settings = collectSettings();
       const targetSettings = buildSelectedServiceSettings();
       const pendingStatus = type === MESSAGE_TYPES.TEST_MODEL_CAPABILITY
-        ? "正在使用 testimage.png 执行真实翻译测试..."
+        ? t("statusRunningCapability")
         : type === MESSAGE_TYPES.AUTO_DETECT_ENDPOINT_MODE
-          ? "正在自动探测..."
-          : "正在执行测试...";
+          ? t("statusRunningDetect")
+          : t("statusRunningTest");
       setStatus(pendingStatus);
 
       const response = await chrome.runtime.sendMessage({
@@ -465,7 +493,7 @@
         payload: targetSettings
       });
       if (!response?.ok) {
-        throw new Error(response?.error?.message || "测试失败");
+        throw new Error(response?.error?.message || t("statusTestFailed"));
       }
 
       const result = response.result;
@@ -473,7 +501,7 @@
       elements.previewView.textContent = JSON.stringify(result.preview || buildPreviewSource(targetSettings), null, 2);
       elements.originalPreview.src = result.originalTestImageUrl || chrome.runtime.getURL("testimage.png");
       elements.translatedPreview.src = result.translatedPreviewUrl || "";
-      setStatus(result.suggestion || (result.ok ? "测试通过" : "测试失败"), !result.ok);
+      setStatus(result.suggestion || (result.ok ? t("statusTestPassed") : t("statusTestFailed")), !result.ok);
 
       settings = mergeSettings({
         ...settings,
@@ -482,7 +510,7 @@
       });
       renderTestViews();
     } catch (error) {
-      setStatus(error.message || "测试失败", true);
+      setStatus(error.message || t("statusTestFailed"), true);
     }
   }
 
@@ -500,7 +528,8 @@
   }
 
   function getProviderLabel(providerType) {
-    return PROVIDER_TYPE_OPTIONS.find((item) => item.value === providerType)?.label || providerType;
+    const option = PROVIDER_TYPE_OPTIONS.find((item) => item.value === providerType);
+    return option ? getOptionLabel(option) : providerType;
   }
 
   function setStatus(message, isError = false) {

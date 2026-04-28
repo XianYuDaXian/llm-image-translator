@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "LLM image translator"
+  },
+  "extDescription": {
+    "message": "Hover to translate web images with multiple OpenAI-compatible endpoints."
+  }
+}

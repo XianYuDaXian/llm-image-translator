@@ -3,6 +3,7 @@
     DEFAULT_SETTINGS,
     MESSAGE_TYPES,
     mergeSettings,
+    t,
     normalizeExcludedSites,
     buildSettingsSignature,
     normalizeCacheEntry,
@@ -71,15 +72,15 @@
 
     state.hoverButton = document.createElement("button");
     state.hoverButton.className = "itx-hover-button";
-    state.hoverButton.textContent = "翻译图片";
+    state.hoverButton.textContent = t("hoverTranslate");
     state.hoverButton.addEventListener("click", onHoverButtonClick);
     state.hoverActions.appendChild(state.hoverButton);
 
     state.excludeButton = document.createElement("button");
     state.excludeButton.className = "itx-hover-exclude-button";
     state.excludeButton.textContent = "⊘";
-    state.excludeButton.title = "排除翻译";
-    state.excludeButton.setAttribute("aria-label", "排除翻译");
+    state.excludeButton.title = t("excludeTranslate");
+    state.excludeButton.setAttribute("aria-label", t("excludeTranslate"));
     state.excludeButton.addEventListener("click", onExcludeButtonClick);
     state.hoverActions.appendChild(state.excludeButton);
 
@@ -338,11 +339,11 @@
 
   function renderHoverButton(status) {
     const labels = {
-      idle: "翻译图片",
-      queued: "等待翻译",
-      running: "翻译中",
-      completed: "恢复原图",
-      failed: "重试翻译"
+      idle: t("hoverTranslate"),
+      queued: t("hoverQueued"),
+      running: t("hoverRunning"),
+      completed: t("hoverRestore"),
+      failed: t("hoverRetry")
     };
     state.hoverButton.dataset.state =
       status === "completed" ? "done" :
@@ -377,7 +378,7 @@
     }
     if (isCurrentSiteExcluded() || isImageExcluded(image)) {
       hideHoverButton();
-      showToast("该图片已排除翻译");
+      showToast(t("toastExcludedTarget"));
       return;
     }
 
@@ -386,7 +387,7 @@
     if (current?.status === "completed") {
       restoreImage(imageId);
       renderHoverButton("idle");
-      showToast("已恢复原图");
+      showToast(t("toastRestored"));
       return;
     }
 
@@ -395,12 +396,12 @@
     if (cached) {
       resolveCachedDisplayUrl(cached).then((displayUrl) => {
         if (!displayUrl) {
-          showToast("缓存结果加载失败");
+          showToast(t("toastCacheLoadFailed"));
           return;
         }
         applyTranslatedImage(imageId, displayUrl, cached);
         renderHoverButton("completed");
-        showToast("已使用缓存结果");
+        showToast(t("toastUsedCache"));
       });
       return;
     }
@@ -423,7 +424,7 @@
     if (!response?.ok) {
       setImageState(imageId, { status: "failed", errorMessage: response?.error?.message || "翻译任务创建失败" });
       renderHoverButton("failed");
-      showToast(response?.error?.message || "翻译任务创建失败");
+      showToast(response?.error?.message || t("toastTaskCreatedFailed"));
     }
   }
 
@@ -445,7 +446,7 @@
       excludedImageUrls: Array.from(state.excludedImages)
     });
     hideHoverButton();
-    showToast("已排除这张图片");
+    showToast(t("toastExcludedImage"));
   }
 
   function isCurrentSiteExcluded() {
@@ -539,7 +540,7 @@
       const cacheEntry = normalizeCacheEntry(task.cacheEntry || task.translatedUrl || "");
       const displayUrl = task.translatedUrl || await resolveCachedDisplayUrl(cacheEntry);
       if (!displayUrl) {
-        showToast("图片已生成，但结果图加载失败");
+        showToast(t("toastResultLoadFailed"));
         return;
       }
       applyTranslatedImage(task.imageId, displayUrl, cacheEntry || displayUrl);
@@ -547,7 +548,7 @@
       if (state.activeImage === image) {
         renderHoverButton("completed");
       }
-      showToast("图片翻译完成");
+      showToast(t("toastTaskDone"));
     }
   }
 
@@ -695,7 +696,7 @@
       if (state.activeImage === image) {
         renderHoverButton("idle");
       }
-      showToast("已恢复原图");
+      showToast(t("toastRestored"));
       return;
     }
 

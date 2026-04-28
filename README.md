@@ -1,6 +1,10 @@
-# llm-image-translator
+# LLM图片翻译助手
 
-这是一个可直接通过 Chrome / Edge “加载已解压的扩展程序”方式运行的 `Manifest V3` 浏览器扩展，项目名为 `llm-image-translator`。
+这是一个可直接通过 Chrome / Edge “加载已解压的扩展程序”方式运行的 `Manifest V3` 浏览器扩展。
+
+英文名：`LLM image translator`  
+中文名：`LLM图片翻译助手`  
+仓库名：`llm-image-translator`
 
 ## 已实现能力
 
@@ -10,6 +14,10 @@
 - 设置页提供基础连通测试、真实图片翻译测试、自动探测推荐配置
 - 设置页直接展示 `testimage.png` 原图与翻译结果
 - 支持当前视口批量翻译、任务侧边栏、恢复原图
+
+## 设置页截图
+
+![设置页截图](./asset/%E6%95%88%E6%9E%9C%E5%9B%BE.png)
 
 ## 使用方式
 

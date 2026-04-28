@@ -3,109 +3,114 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>llm-image-translator 设置</title>
+  <title>LLM图片翻译助手 设置</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <main class="page">
     <section class="hero">
-      <p class="eyebrow">llm-image-translator</p>
-      <h1>多服务 API 配置与真实翻译测试</h1>
-      <p class="summary">左侧维护多个翻译服务，右侧编辑当前服务详情。默认服务会作为扩展实际调用的 API。</p>
+      <div class="hero-copy">
+        <p class="eyebrow" data-i18n="appNameShort">LLM图片翻译助手</p>
+        <h1 data-i18n="heroTitle">多服务 API 配置与真实翻译测试</h1>
+        <p class="summary" data-i18n="heroSummary">左侧维护多个翻译服务，右侧编辑当前服务详情。默认服务会作为扩展实际调用的 API。</p>
+      </div>
+      <div class="hero-logo-wrap" aria-hidden="true">
+        <img class="hero-logo" src="logo.png" alt="">
+      </div>
     </section>
 
     <section class="service-layout">
       <aside class="card service-sidebar">
         <div class="section-head">
-          <h2>翻译服务列表</h2>
-          <p>可添加多个服务，并设置一个默认服务供扩展实际调用。</p>
+          <h2 data-i18n="serviceListTitle">翻译服务列表</h2>
+          <p data-i18n="serviceListSummary">可添加多个服务，并设置一个默认服务供扩展实际调用。</p>
         </div>
-        <button id="addServiceButton" class="service-add-button">+ 添加自定义翻译服务</button>
+        <button id="addServiceButton" class="service-add-button" data-i18n="addCustomService">+ 添加自定义翻译服务</button>
         <div id="serviceList" class="service-list"></div>
       </aside>
 
       <section class="card service-detail">
         <div class="service-detail-head">
           <div>
-            <p class="eyebrow">当前服务</p>
+            <p class="eyebrow" data-i18n="currentService">当前服务</p>
             <h2 id="serviceDetailTitle">默认服务</h2>
           </div>
           <div class="detail-actions">
-            <button id="duplicateServiceButton">复制服务</button>
-            <button id="setDefaultServiceButton" class="primary">设为默认</button>
-            <button id="deleteServiceButton">删除服务</button>
+            <button id="duplicateServiceButton" data-i18n="duplicateService">复制服务</button>
+            <button id="setDefaultServiceButton" class="primary" data-i18n="setAsDefault">设为默认</button>
+            <button id="deleteServiceButton" data-i18n="deleteService">删除服务</button>
           </div>
         </div>
 
         <div class="grid">
-          <label><span>服务名称</span><input id="serviceName" type="text" placeholder="例如：grok / codex / 内网服务"></label>
-          <label><span>接口类型</span><select id="providerType"></select></label>
-          <label><span>Base URL</span><input id="baseUrl" type="url" placeholder="https://api.openai.com"></label>
-          <label><span>API Key</span><input id="apiKey" type="password" placeholder="sk-..."></label>
-          <label class="inline-checkbox"><input id="showApiKey" type="checkbox"><span>显示 API Key</span></label>
-          <label><span>Endpoint Mode</span><select id="endpointMode"></select></label>
-          <label><span>Model</span><input id="model" type="text" placeholder="gpt-image-1 / gemini-2.0-flash-exp-image-generation"></label>
-          <label><span>Custom Path</span><input id="customPath" type="text" placeholder="/v1/custom/images"></label>
-          <label><span>请求格式</span><select id="requestFormat"></select></label>
-          <label class="inline-checkbox"><input id="serviceEnabled" type="checkbox"><span>启用该服务</span></label>
+          <label><span data-i18n="serviceNameLabel">服务名称</span><input id="serviceName" type="text" data-i18n-placeholder="serviceNamePlaceholder" placeholder="例如：grok / codex / 内网服务"></label>
+          <label><span data-i18n="providerTypeLabel">接口类型</span><select id="providerType"></select></label>
+          <label><span data-i18n="baseUrlLabel">Base URL</span><input id="baseUrl" type="url" placeholder="https://api.openai.com"></label>
+          <label><span data-i18n="apiKeyLabel">API Key</span><input id="apiKey" type="password" placeholder="sk-..."></label>
+          <label class="inline-checkbox"><input id="showApiKey" type="checkbox"><span data-i18n="showApiKey">显示 API Key</span></label>
+          <label><span data-i18n="endpointModeLabel">Endpoint Mode</span><select id="endpointMode"></select></label>
+          <label><span data-i18n="modelLabel">Model</span><input id="model" type="text" placeholder="gpt-image-1 / gemini-2.0-flash-exp-image-generation"></label>
+          <label><span data-i18n="customPathLabel">Custom Path</span><input id="customPath" type="text" data-i18n-placeholder="customPathPlaceholder" placeholder="/v1/custom/images"></label>
+          <label><span data-i18n="requestFormatLabel">请求格式</span><select id="requestFormat"></select></label>
+          <label class="inline-checkbox"><input id="serviceEnabled" type="checkbox"><span data-i18n="serviceEnabled">启用该服务</span></label>
         </div>
 
         <div class="section-head compact-head">
-          <h2>高级请求设置</h2>
-          <p>兼容非标准 OpenAI-compatible 服务，可附加自定义 Header 与自定义响应路径。</p>
+          <h2 data-i18n="advancedRequestTitle">高级请求设置</h2>
+          <p data-i18n="advancedRequestSummary">兼容非标准 OpenAI-compatible 服务，可附加自定义 Header 与自定义响应路径。</p>
         </div>
-        <label class="stack"><span>Custom Headers（JSON 数组）</span><textarea id="customHeaders" rows="5" placeholder='[{"name":"X-Provider","value":"demo"}]'></textarea></label>
-        <label class="stack"><span>响应图片提取路径</span><input id="customResponseImagePath" type="text" placeholder="例如 output.0.content.0.text 或 data.0.url"></label>
+        <label class="stack"><span data-i18n="customHeadersLabel">Custom Headers（JSON 数组）</span><textarea id="customHeaders" rows="5" data-i18n-placeholder="customHeadersPlaceholder" placeholder='[{"name":"X-Provider","value":"demo"}]'></textarea></label>
+        <label class="stack"><span data-i18n="customResponseImagePathLabel">响应图片提取路径</span><input id="customResponseImagePath" type="text" data-i18n-placeholder="customResponseImagePathPlaceholder" placeholder="例如 output.0.content.0.text 或 data.0.url"></label>
       </section>
     </section>
 
     <section class="card grid">
-      <label><span>并发数</span><input id="concurrency" type="number" min="1" max="8"></label>
-      <label><span>请求超时（毫秒）</span><input id="requestTimeoutMs" type="number" min="5000" step="1000"></label>
-      <label><span>最大图片大小（MB）</span><input id="maxImageMegabytes" type="number" min="1" step="1"></label>
-      <label><span>最小悬浮图片尺寸（px）</span><input id="minImageDisplaySize" type="number" min="48" step="8"></label>
-      <label><span>最小翻译宽度（px）</span><input id="minTranslationWidth" type="number" min="48" step="8"></label>
-      <label><span>最小翻译高度（px）</span><input id="minTranslationHeight" type="number" min="48" step="8"></label>
+      <label><span data-i18n="concurrencyLabel">并发数</span><input id="concurrency" type="number" min="1" max="8"></label>
+      <label><span data-i18n="timeoutLabel">请求超时（毫秒）</span><input id="requestTimeoutMs" type="number" min="5000" step="1000"></label>
+      <label><span data-i18n="maxImageMbLabel">最大图片大小（MB）</span><input id="maxImageMegabytes" type="number" min="1" step="1"></label>
+      <label><span data-i18n="minHoverImageLabel">最小悬浮图片尺寸（px）</span><input id="minImageDisplaySize" type="number" min="48" step="8"></label>
+      <label><span data-i18n="minTranslationWidthLabel">最小翻译宽度（px）</span><input id="minTranslationWidth" type="number" min="48" step="8"></label>
+      <label><span data-i18n="minTranslationHeightLabel">最小翻译高度（px）</span><input id="minTranslationHeight" type="number" min="48" step="8"></label>
       <label>
-        <span>目标语言</span>
+        <span data-i18n="targetLanguageLabel">目标语言</span>
         <select id="targetLanguagePreset"></select>
-        <input id="targetLanguageCustom" type="text" placeholder="输入自定义语言代码，例如 id / pl / nl">
+        <input id="targetLanguageCustom" type="text" data-i18n-placeholder="targetLanguagePlaceholder" placeholder="输入自定义语言代码，例如 id / pl / nl">
       </label>
       <label class="stack wide-field">
-        <span>排除翻译网站</span>
-        <textarea id="excludedSites" rows="4" placeholder="每行一个域名，例如 example.com 或 *.example.com"></textarea>
+        <span data-i18n="excludedSitesLabel">排除翻译网站</span>
+        <textarea id="excludedSites" rows="4" data-i18n-placeholder="excludedSitesPlaceholder" placeholder="每行一个域名，例如 example.com 或 *.example.com"></textarea>
       </label>
-      <label class="inline-checkbox"><input id="hoverButtonEnabled" type="checkbox"><span>启用图片悬浮翻译按钮</span></label>
+      <label class="inline-checkbox"><input id="hoverButtonEnabled" type="checkbox"><span data-i18n="hoverButtonEnabledLabel">启用图片悬浮翻译按钮</span></label>
     </section>
 
     <section class="card">
-      <label class="stack"><span>翻译提示词</span><textarea id="translatePromptTemplate" rows="6"></textarea></label>
+      <label class="stack"><span data-i18n="translatePromptLabel">翻译提示词</span><textarea id="translatePromptTemplate" rows="6"></textarea></label>
     </section>
 
     <section class="card">
       <div class="section-head">
-        <h2>测试与自动探测</h2>
-        <p>测试针对当前正在编辑的服务执行。“测试模型能力”会直接翻译扩展内置的 `testimage.png`。</p>
+        <h2 data-i18n="testSectionTitle">测试与自动探测</h2>
+        <p data-i18n="testSectionSummary">测试针对当前正在编辑的服务执行。“测试模型能力”会直接翻译扩展内置的 testimage.png。</p>
       </div>
       <div class="actions">
-        <button id="saveButton" class="primary">保存设置</button>
-        <button id="exportConfigButton">导出配置</button>
-        <button id="importConfigButton">导入配置</button>
+        <button id="saveButton" class="primary" data-i18n="saveSettings">保存设置</button>
+        <button id="exportConfigButton" data-i18n="exportConfig">导出配置</button>
+        <button id="importConfigButton" data-i18n="importConfig">导入配置</button>
         <input id="importConfigInput" type="file" accept="application/json,.json" hidden>
-        <button id="connectivityButton">测试基础连通</button>
-        <button id="capabilityButton">测试模型能力</button>
-        <button id="detectButton">自动探测推荐配置</button>
+        <button id="connectivityButton" data-i18n="testConnectivity">测试基础连通</button>
+        <button id="capabilityButton" data-i18n="testCapability">测试模型能力</button>
+        <button id="detectButton" data-i18n="autoDetect">自动探测推荐配置</button>
       </div>
       <div id="statusMessage" class="status"></div>
     </section>
 
     <section class="card preview-grid">
       <div class="image-card">
-        <h2>测试原图</h2>
+        <h2 data-i18n="testOriginalImage">测试原图</h2>
         <img id="originalPreview" alt="测试原图">
       </div>
       <div class="image-card">
-        <h2>翻译结果</h2>
+        <h2 data-i18n="translatedResult">翻译结果</h2>
         <img id="translatedPreview" alt="翻译结果">
       </div>
     </section>
@@ -113,15 +118,15 @@
     <section class="card split">
       <div>
         <div class="section-head">
-          <h2>测试结果摘要</h2>
-          <p>快速判断“可连通”“可返图”还是“仅文本”。</p>
+          <h2 data-i18n="resultSummaryTitle">测试结果摘要</h2>
+          <p data-i18n="resultSummaryText">快速判断“可连通”“可返图”还是“仅文本”。</p>
         </div>
         <pre id="resultView" class="code-block"></pre>
       </div>
       <div>
         <div class="section-head">
-          <h2>测试请求预览</h2>
-          <p>默认对 `API Key` 脱敏，便于排查路径与请求体结构。</p>
+          <h2 data-i18n="requestPreviewTitle">测试请求预览</h2>
+          <p data-i18n="requestPreviewText">默认对 API Key 脱敏，便于排查路径与请求体结构。</p>
         </div>
         <pre id="previewView" class="code-block"></pre>
       </div>

@@ -8,7 +8,8 @@ const {
   normalizeBaseUrl,
   buildSettingsSignature,
   maskSecret,
-  normalizeCacheEntry
+  normalizeCacheEntry,
+  t
 } = globalThis.AppShared;
 
 const state = {
@@ -104,7 +105,7 @@ async function handleMessage(message, sender) {
     case MESSAGE_TYPES.RESTORE_ALL_IMAGES:
       return restoreAllImages(sender.tab?.id ?? message.payload?.tabId);
     default:
-      throw new Error(`未知消息类型: ${message.type}`);
+      throw new Error(t("errorUnknownMessageType", { type: message.type }));
   }
 }
 
@@ -112,7 +113,7 @@ async function ensureContextMenu() {
   await chrome.contextMenus.removeAll();
   chrome.contextMenus.create({
     id: CONTEXT_MENU_TRANSLATE_IMAGE,
-    title: "翻译这张图片",
+    title: t("contextTranslateImage"),
     contexts: ["image"],
     documentUrlPatterns: ["<all_urls>"]
   });
@@ -136,7 +137,7 @@ async function saveSettings(payload) {
 
 function serializeError(error) {
   return {
-    message: error?.message || "未知错误",
+    message: error?.message || t("errorUnknown"),
     code: error?.code || "",
     stack: error?.stack || ""
   };
@@ -173,7 +174,7 @@ async function handleContextTranslateImage(srcUrl, tabId) {
 async function setAutoTranslateTabState(payload, senderTabId) {
   const tabId = payload?.tabId ?? senderTabId;
   if (!tabId) {
-    throw new Error("缺少 tabId");
+    throw new Error(t("errorMissingTabId"));
   }
   if (payload?.enabled) {
     state.autoTranslateTabs.add(tabId);
@@ -277,7 +278,7 @@ function buildEndpoint(settings, mode = settings.endpointMode) {
   if (settings.providerType === "custom_endpoint" || mode === "custom") {
     const path = (settings.customPath || "").trim();
     if (!path) {
-      throw new Error("Custom 模式下必须填写 Custom Path");
+      throw new Error(t("errorCustomPathRequired"));
     }
     if (/^https?:\/\//i.test(path)) {
       return path;
@@ -295,9 +296,9 @@ function buildEndpoint(settings, mode = settings.endpointMode) {
 
 function buildFinalPrompt(settings) {
   const targetLanguage = settings.targetLanguage === "auto"
-    ? chrome.i18n?.getUILanguage?.() || "当前浏览器语言"
+    ? chrome.i18n?.getUILanguage?.() || t("currentBrowserLanguage")
     : settings.targetLanguage;
-  return `${settings.translatePromptTemplate}\n目标语言：${targetLanguage}`;
+  return `${settings.translatePromptTemplate}\n${t("promptTargetLanguage")}：${targetLanguage}`;
 }
 
 function buildRequestPreview(settings, mode = settings.endpointMode) {
@@ -383,16 +384,16 @@ function buildRequestPreview(settings, mode = settings.endpointMode) {
 
 function validateRequiredSettings(settings, requireModel) {
   if (!settings.baseUrl) {
-    throw new Error("必须填写 Base URL");
+    throw new Error(t("errorBaseUrlRequired"));
   }
   if (!settings.apiKey) {
-    throw new Error("必须填写 API Key");
+    throw new Error(t("errorApiKeyRequired"));
   }
   if (settings.providerType === "custom_endpoint" && !settings.customPath) {
-    throw new Error("自定义端点模式下必须填写 Custom Path");
+    throw new Error(t("errorCustomEndpointPathRequired"));
   }
   if (requireModel && !settings.model) {
-    throw new Error("必须填写模型名称");
+    throw new Error(t("errorModelRequired"));
   }
 }
 
@@ -402,7 +403,7 @@ function buildConnectivityProbeBody(settings) {
       contents: [
         {
           role: "user",
-          parts: [{ text: "请回复 ok。" }]
+          parts: [{ text: t("probeReplyOk") }]
         }
       ]
     };
@@ -410,20 +411,20 @@ function buildConnectivityProbeBody(settings) {
   if (settings.endpointMode === "responses") {
     return {
       model: settings.model,
-      input: [{ role: "user", content: [{ type: "input_text", text: "请回复 ok。" }] }]
+      input: [{ role: "user", content: [{ type: "input_text", text: t("probeReplyOk") }] }]
     };
   }
   if (settings.endpointMode === "chat") {
     return {
       model: settings.model,
-      messages: [{ role: "user", content: "请回复 ok。" }],
+      messages: [{ role: "user", content: t("probeReplyOk") }],
       max_tokens: 8
     };
   }
   if (resolveRequestFormat(settings) === "json_image_url") {
     return {
       model: settings.model,
-      prompt: "请原样返回一张测试图片。",
+      prompt: t("probeReturnImage"),
       image: {
         url: createProbeImageDataUrl(),
         type: "image_url"
@@ -432,7 +433,7 @@ function buildConnectivityProbeBody(settings) {
   }
   return {
     model: settings.model,
-    prompt: "请回复 ok。"
+    prompt: t("probeReplyOk")
   };
 }
 
@@ -458,7 +459,7 @@ function buildConnectivityProbeRequest(settings, signal) {
 
   const formData = new FormData();
   formData.set("model", settings.model);
-  formData.set("prompt", "请原样返回一张测试图片。");
+  formData.set("prompt", t("probeReturnImage"));
   formData.set("image", dataUrlToBlob(createProbeImageDataUrl()), "probe.png");
   return {
     method: "POST",
@@ -470,34 +471,34 @@ function buildConnectivityProbeRequest(settings, signal) {
 
 function buildHttpErrorMessage(status) {
   if (status === 401 || status === 403) {
-    return "鉴权失败，请检查 API Key 或权限。";
+    return t("errorHttpAuth");
   }
   if (status === 404) {
-    return "未找到端点，请检查 Base URL 或路径。";
+    return t("errorHttpNotFound");
   }
   if (status === 429) {
-    return "请求过于频繁或额度不足。";
+    return t("errorHttpRateLimit");
   }
   if (status >= 500) {
-    return "上游服务异常。";
+    return t("errorHttpServer");
   }
-  return `请求失败，HTTP ${status}`;
+  return t("errorHttpGeneric", { status });
 }
 
 function buildSuggestionByStatus(status) {
   if (status === 401 || status === 403) {
-    return "请确认 API Key、权限或自定义 Header。";
+    return t("suggestionAuth");
   }
   if (status === 404) {
-    return "请确认端点模式是否正确，必要时填写 Custom Path。";
+    return t("suggestionNotFound");
   }
   if (status === 429) {
-    return "请降低并发或检查额度。";
+    return t("suggestionRateLimit");
   }
   if (status >= 500) {
-    return "请稍后重试，或切换备用服务。";
+    return t("suggestionServer");
   }
-  return "请检查请求结构与兼容格式。";
+  return t("suggestionRequestShape");
 }
 
 function truncateText(text, limit) {
@@ -514,7 +515,7 @@ function createProbeImageDataUrl() {
 async function fetchExtensionImageAsDataUrl(url) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("测试图片读取失败");
+    throw new Error(t("errorReadTestImageFailed"));
   }
   return blobToDataUrl(await response.blob());
 }
@@ -718,7 +719,7 @@ async function testConnectivity(rawSettings) {
       canImageToImage: false,
       errorCode: response.ok ? "" : `HTTP_${response.status}`,
       errorMessage: response.ok ? "" : buildHttpErrorMessage(response.status),
-      suggestion: response.ok ? "基础连通测试通过，可继续执行模型能力测试。" : buildSuggestionByStatus(response.status),
+      suggestion: response.ok ? t("suggestionConnectivityPassed") : buildSuggestionByStatus(response.status),
       preview,
       responseSample: parsed || truncateText(text, 800)
     };
@@ -735,8 +736,8 @@ async function testConnectivity(rawSettings) {
       canImageEdit: false,
       canImageToImage: false,
       errorCode: error.name === "AbortError" ? "TIMEOUT" : "NETWORK_ERROR",
-      errorMessage: error.name === "AbortError" ? "请求超时" : (error.message || "网络请求失败"),
-      suggestion: "请检查 Base URL、网络环境、CORS 以及路径配置。",
+      errorMessage: error.name === "AbortError" ? t("errorRequestTimeout") : (error.message || t("errorNetworkFailed")),
+      suggestion: t("suggestionCheckNetwork"),
       preview,
       responseSample: null
     };
@@ -776,8 +777,8 @@ async function testCapability(rawSettings) {
         canImageToImage: false
       },
       errorCode: error.name === "AbortError" ? "TIMEOUT" : "NETWORK_ERROR",
-      errorMessage: error.name === "AbortError" ? "能力测试超时" : (error.message || "能力测试失败"),
-      suggestion: "请确认当前模型支持图片输入与图片输出。",
+      errorMessage: error.name === "AbortError" ? t("errorCapabilityTimeout") : (error.message || t("errorCapabilityFailed")),
+      suggestion: t("suggestionCapabilitySupport"),
       preview
     };
     await persistTestResult("lastCapabilityTestResult", settings, result);
@@ -797,8 +798,8 @@ async function autoDetectEndpoint(rawSettings) {
       recommendedMode: settings.providerType,
       reports: [{ mode: settings.providerType, connectivity, capability }],
       suggestion: capability?.ok
-        ? "Gemini 协议生图能力测试通过。"
-        : (capability?.suggestion || connectivity?.suggestion || "Gemini 协议生图测试未通过。")
+        ? t("suggestionGeminiPassed")
+        : (capability?.suggestion || connectivity?.suggestion || t("suggestionGeminiFailed"))
     };
   }
 
@@ -811,8 +812,8 @@ async function autoDetectEndpoint(rawSettings) {
       recommendedMode: "custom",
       reports: [{ mode: "custom", connectivity, capability }],
       suggestion: capability?.ok
-        ? "自定义端点能力测试通过。"
-        : (capability?.suggestion || connectivity?.suggestion || "自定义端点测试未通过。")
+        ? t("suggestionCustomPassed")
+        : (capability?.suggestion || connectivity?.suggestion || t("suggestionCustomFailed"))
     };
   }
 
@@ -837,8 +838,8 @@ async function autoDetectEndpoint(rawSettings) {
     recommendedMode: fallback?.mode || settings.endpointMode,
     reports,
     suggestion: fallback
-      ? "发现可连通端点，但尚未确认返图能力。"
-      : "未找到可连通端点，请检查配置。"
+      ? t("suggestionReachableButNoImage")
+      : t("suggestionNoReachableEndpoint")
   };
 }
 
@@ -977,7 +978,7 @@ async function parseCapabilityResponse(response, settings, preview) {
       },
       imageResult: { type: "binary" },
       translatedPreviewUrl: await blobToDataUrl(blob),
-      suggestion: "能力测试通过，当前模型支持返图。",
+      suggestion: t("suggestionCapabilityPassed"),
       preview
     };
   }
@@ -1003,12 +1004,12 @@ async function parseCapabilityResponse(response, settings, preview) {
         : `data:image/png;base64,${imageResult.value}`
       : "",
     errorCode: imageResult ? "" : textResult ? "TEXT_ONLY" : "UNSUPPORTED_RESPONSE",
-    errorMessage: imageResult ? "" : textResult ? "当前端点只返回文本，不支持返图。" : "返回结构与已知兼容格式不匹配。",
+    errorMessage: imageResult ? "" : textResult ? t("errorTextOnlyResponse") : t("errorUnsupportedResponse"),
     suggestion: imageResult
-      ? "能力测试通过，当前模型支持返图。"
+      ? t("suggestionCapabilityPassed")
       : textResult
-        ? "请切换支持图片输出的模型或端点模式。"
-        : "请检查供应商兼容格式，必要时改用 Custom 模式。",
+        ? t("suggestionSwitchImageModel")
+        : t("suggestionCheckProviderFormat"),
     preview,
     responseSample: parsed
   };
@@ -1062,7 +1063,7 @@ function settleTask(task) {
 
 async function enqueueTask(taskInput, options = {}) {
   if (!taskInput?.tabId || !taskInput?.imageId || !taskInput?.imageUrl) {
-    throw new Error("缺少图片任务参数");
+    throw new Error(t("errorMissingTaskParams"));
   }
 
   const taskId = buildTaskId(taskInput);
