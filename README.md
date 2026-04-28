@@ -6,6 +6,9 @@
 中文名：`LLM图片翻译助手`  
 仓库名：`llm-image-translator`
 
+项目主页：`https://xianyudaxian.github.io/llm-image-translator/`  
+隐私政策：`https://xianyudaxian.github.io/llm-image-translator/privacy.html`
+
 ## 已实现能力
 
 - 页面图片悬浮时显示“翻译图片”按钮

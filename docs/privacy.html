@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LLM图片翻译助手隐私政策</title>
+  <meta name="description" content="LLM图片翻译助手隐私政策">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">PRIVACY POLICY</p>
+        <h1>LLM图片翻译助手隐私政策</h1>
+        <p class="summary">最后更新：2026-04-28</p>
+        <div class="actions">
+          <a class="button secondary" href="./index.html">返回项目主页</a>
+          <a class="button primary" href="mailto:xian_yu@live.com">联系开发者</a>
+        </div>
+      </div>
+      <img src="./assets/logo.png" alt="LLM图片翻译助手 Logo">
+    </section>
+
+    <section class="card">
+      <p>
+        <strong>LLM图片翻译助手（LLM image translator）</strong>
+        是一个浏览器扩展，用于识别网页中的图片，并将用户选择翻译的图片发送到用户自行配置的大模型图像服务端点，生成翻译后的结果图并在页面中展示。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>1. 我们处理哪些数据</h2>
+      <ul>
+        <li>当前网页中的图片内容</li>
+        <li>图片 URL</li>
+        <li>当前页面 URL 或页面所属站点信息</li>
+        <li>用户在设置页中填写的服务配置，包括 `Base URL`、`API Key`、`Model`、`Endpoint Mode`、自定义 Header 与自定义响应路径</li>
+        <li>扩展运行过程中生成的任务状态、错误信息与结果缓存</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>2. 我们如何使用这些数据</h2>
+      <ul>
+        <li>识别当前网页中的可翻译图片</li>
+        <li>将用户明确选择的图片发送到用户配置的模型服务进行翻译</li>
+        <li>在页面中显示翻译结果</li>
+        <li>在本地缓存翻译结果，避免重复请求</li>
+        <li>在设置页执行连通性测试、能力测试和自动探测</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>3. 数据会发送给谁</h2>
+      <p>
+        本扩展不会默认将图片或请求数据发送到开发者自有服务器。当用户触发翻译、测试或自动探测时，相关请求会直接发送到用户在设置页中显式配置的第三方模型服务端点。
+      </p>
+      <p class="muted" style="margin-top:12px;">
+        这些端点可能包括 OpenAI 官方接口、Gemini 官方接口、xAI 兼容接口、OpenAI / Gemini 兼容接口、用户自建私有服务或局域网服务。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>4. 本地存储</h2>
+      <ul>
+        <li>扩展设置</li>
+        <li>最近任务状态</li>
+        <li>排除翻译的网站与图片</li>
+        <li>翻译结果缓存</li>
+        <li>对于 `base64` 或二进制结果图，扩展会将图片二进制缓存到浏览器本地 `IndexedDB`</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>5. 数据共享与出售</h2>
+      <p>
+        开发者不会出售用户数据，也不会主动将扩展处理的数据共享给与本功能无关的第三方。唯一的外部数据传输场景，是用户主动配置并使用某个模型服务端点时，扩展将请求直接发送到该端点。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>6. 用户控制</h2>
+      <ul>
+        <li>修改或删除模型服务配置</li>
+        <li>清除浏览器中的扩展本地存储数据</li>
+        <li>停用或卸载扩展</li>
+        <li>配置排除翻译的网站</li>
+        <li>停止使用任意第三方模型服务端点</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>7. 数据安全说明</h2>
+      <p>
+        本扩展是一个模型服务客户端，支持用户自定义端点。若用户配置的是第三方、私有部署或局域网服务，数据安全取决于用户所选择服务的网络环境和实现方式。用户应仅在自己信任的服务上使用本扩展。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>8. 联系方式</h2>
+      <p><a href="mailto:xian_yu@live.com">xian_yu@live.com</a></p>
+    </section>
+  </main>
+</body>
+</html>

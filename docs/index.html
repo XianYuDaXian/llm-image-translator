@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LLM图片翻译助手 | LLM image translator</title>
+  <meta name="description" content="LLM图片翻译助手：悬浮翻译网页图片，兼容 OpenAI、Gemini、xAI 兼容端点和自定义图像接口。">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">LLM IMAGE TRANSLATOR</p>
+        <h1>LLM图片翻译助手</h1>
+        <p class="summary">
+          一个面向 Chrome / Edge 的浏览器扩展：在网页图片上悬浮触发翻译，调用用户自行配置的模型图像服务，原位展示翻译后的结果图。
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/XianYuDaXian/llm-image-translator" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
+          <a class="button secondary" href="./privacy.html">隐私政策</a>
+        </div>
+      </div>
+      <img src="./assets/logo.png" alt="LLM图片翻译助手 Logo">
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>核心功能</h2>
+        <ul>
+          <li>网页图片悬浮翻译按钮</li>
+          <li>原位替换结果图与对比预览</li>
+          <li>支持 OpenAI、Gemini、xAI 兼容与自定义端点</li>
+          <li>设置页连通性测试、能力测试、自动探测</li>
+          <li>任务侧边栏、结果缓存、排除网站与图片</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>数据说明</h2>
+        <p class="summary">
+          扩展不会默认把数据发送到开发者服务器。用户触发翻译后，请求会直接发往用户在设置页中配置的模型服务端点。
+        </p>
+        <div class="actions">
+          <a class="button secondary" href="./privacy.html">查看完整隐私政策</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>设置页截图</h2>
+      <p class="muted" style="margin-bottom:14px;">下图展示了多服务配置、真实翻译测试、自动探测与结果预览界面。</p>
+      <img class="shot" src="./assets/settings-page.png" alt="LLM图片翻译助手设置页截图">
+    </section>
+
+    <p class="footer">
+      联系方式：<a href="mailto:xian_yu@live.com">xian_yu@live.com</a>
+    </p>
+  </main>
+</body>
+</html>
