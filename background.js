@@ -7,7 +7,8 @@ const {
   safeJsonParse,
   normalizeBaseUrl,
   buildSettingsSignature,
-  maskSecret
+  maskSecret,
+  normalizeCacheEntry
 } = globalThis.AppShared;
 
 const state = {
@@ -20,6 +21,9 @@ const state = {
 };
 
 const CONTEXT_MENU_TRANSLATE_IMAGE = "itx_translate_image";
+const IMAGE_CACHE_DB_NAME = "llm-image-translator-cache";
+const IMAGE_CACHE_DB_VERSION = 1;
+const IMAGE_CACHE_STORE_NAME = "images";
 void initializeExtension();
 
 async function initializeExtension() {
@@ -80,7 +84,7 @@ async function handleMessage(message, sender) {
     case MESSAGE_TYPES.AUTO_DETECT_ENDPOINT_MODE:
       return autoDetectEndpoint(message.payload || state.settings);
     case MESSAGE_TYPES.RESOLVE_IMAGE_FOR_DISPLAY:
-      return resolveImageForDisplay(message.payload?.url);
+      return resolveImageForDisplay(message.payload?.cacheEntry);
     case MESSAGE_TYPES.SET_AUTO_TRANSLATE_TAB:
       return setAutoTranslateTabState(message.payload, sender.tab?.id);
     case MESSAGE_TYPES.GET_AUTO_TRANSLATE_TAB_STATE:
@@ -1051,7 +1055,7 @@ function settleTask(task) {
     status: task.status,
     errorMessage: task.errorMessage || "",
     resultUrl: task.resultUrl || "",
-    cacheUrl: task.cacheUrl || ""
+    cacheEntry: task.cacheEntry || null
   });
   state.taskWaiters.delete(task.id);
 }
@@ -1077,7 +1081,7 @@ async function enqueueTask(taskInput, options = {}) {
     attempts: existing?.attempts || 0,
     errorMessage: "",
     resultUrl: "",
-    cacheUrl: "",
+    cacheEntry: null,
     createdAt: Date.now()
   };
   state.tasks.set(taskId, task);
@@ -1132,8 +1136,8 @@ async function runTask(task) {
   const settings = await ensureSettings();
   const translated = await translateImage(task.imageUrl, settings);
   task.status = "completed";
-  task.resultUrl = translated.displayUrl || translated.cacheUrl;
-  task.cacheUrl = translated.cacheUrl;
+  task.resultUrl = translated.displayUrl || "";
+  task.cacheEntry = translated.cacheEntry || null;
   task.errorMessage = "";
   broadcastTaskUpdate(task);
   chrome.tabs.sendMessage(task.tabId, {
@@ -1144,7 +1148,7 @@ async function runTask(task) {
       imageUrl: task.imageUrl,
       status: task.status,
       translatedUrl: translated.displayUrl,
-      cacheUrl: translated.cacheUrl
+      cacheEntry: task.cacheEntry
     }
   }).catch(() => {});
   settleTask(task);
@@ -1162,10 +1166,12 @@ async function translateImage(imageUrl, settings) {
 
   const contentType = response.headers.get("content-type") || "";
   if (contentType.startsWith("image/")) {
-    const dataUrl = await blobToDataUrl(await response.blob());
+    const responseBlob = await response.blob();
+    const dataUrl = await blobToDataUrl(responseBlob);
+    const cacheEntry = await storeBlobCache(responseBlob, responseBlob.type || "image/png");
     return {
       displayUrl: dataUrl,
-      cacheUrl: dataUrl
+      cacheEntry
     };
   }
 
@@ -1186,15 +1192,20 @@ async function translateImage(imageUrl, settings) {
     throw new Error(text ? "上游只返回文本，不支持返图。" : "未识别到可用图片结果。");
   }
   if (imageResult.kind === "url") {
+    const cacheEntry = normalizeCacheEntry({
+      type: "remote_url",
+      value: imageResult.value
+    });
     return {
       displayUrl: isPrivateNetworkUrl(imageResult.value) ? "" : imageResult.value,
-      cacheUrl: imageResult.value
+      cacheEntry
     };
   }
   const dataUrl = `data:image/png;base64,${imageResult.value}`;
+  const cacheEntry = await storeDataUrlCache(dataUrl);
   return {
     displayUrl: dataUrl,
-    cacheUrl: dataUrl
+    cacheEntry
   };
 }
 
@@ -1219,18 +1230,30 @@ function blobToDataUrl(blob) {
   });
 }
 
-async function resolveImageForDisplay(url) {
-  if (!url) {
+async function resolveImageForDisplay(input) {
+  const cacheEntry = normalizeCacheEntry(input);
+  if (cacheEntry?.type === "blob_ref") {
+    const blob = await readBlobCache(cacheEntry.blobKey);
+    if (!blob) {
+      return "";
+    }
+    return blobToDataUrl(blob);
+  }
+  const value = cacheEntry?.value || (typeof input === "string" ? input : "");
+  if (!value) {
     return "";
   }
-  if (!isPrivateNetworkUrl(url)) {
-    return url;
+  if (/^data:image\//i.test(value)) {
+    return value;
+  }
+  if (!isPrivateNetworkUrl(value)) {
+    return value;
   }
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   let response;
   try {
-    response = await fetch(url, { signal: controller.signal });
+    response = await fetch(value, { signal: controller.signal });
   } catch (error) {
     if (error?.name === "AbortError") {
       throw new Error("局域网结果图读取超时");
@@ -1243,6 +1266,61 @@ async function resolveImageForDisplay(url) {
     throw new Error("局域网结果图读取失败");
   }
   return blobToDataUrl(await response.blob());
+}
+
+async function storeDataUrlCache(dataUrl) {
+  const blob = dataUrlToBlob(dataUrl);
+  return storeBlobCache(blob, blob.type || "image/png");
+}
+
+async function storeBlobCache(blob, mimeType) {
+  const blobKey = `blob_${Date.now()}_${crypto.randomUUID()}`;
+  const database = await openImageCacheDb();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(IMAGE_CACHE_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+    const request = store.put({
+      blobKey,
+      blob,
+      mimeType,
+      updatedAt: Date.now()
+    });
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error("Blob 缓存写入失败"));
+  });
+  return {
+    type: "blob_ref",
+    blobKey,
+    mimeType: mimeType || "image/png"
+  };
+}
+
+async function readBlobCache(blobKey) {
+  if (!blobKey) {
+    return null;
+  }
+  const database = await openImageCacheDb();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(IMAGE_CACHE_STORE_NAME, "readonly");
+    const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+    const request = store.get(blobKey);
+    request.onsuccess = () => resolve(request.result?.blob || null);
+    request.onerror = () => reject(request.error || new Error("Blob 缓存读取失败"));
+  });
+}
+
+function openImageCacheDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IMAGE_CACHE_DB_NAME, IMAGE_CACHE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(IMAGE_CACHE_STORE_NAME)) {
+        database.createObjectStore(IMAGE_CACHE_STORE_NAME, { keyPath: "blobKey" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("图片缓存数据库打开失败"));
+  });
 }
 
 function isPrivateNetworkUrl(url) {

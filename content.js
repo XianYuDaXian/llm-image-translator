@@ -1,5 +1,14 @@
 (function () {
-  const { DEFAULT_SETTINGS, MESSAGE_TYPES, mergeSettings, normalizeExcludedSites, buildSettingsSignature } = globalThis.AppShared || {};
+  const {
+    DEFAULT_SETTINGS,
+    MESSAGE_TYPES,
+    mergeSettings,
+    normalizeExcludedSites,
+    buildSettingsSignature,
+    normalizeCacheEntry,
+    getCacheEntryFingerprint
+  } = globalThis.AppShared || {};
+  const CACHE_STORAGE_KEY = "translationCacheEntries";
   if (!MESSAGE_TYPES) {
     return;
   }
@@ -101,8 +110,8 @@
         }
         restoreCachedImages(document);
       }
-      if (areaName === "local" && changes.translationCache) {
-        const nextCache = changes.translationCache.newValue || {};
+      if (areaName === "local" && changes[CACHE_STORAGE_KEY]) {
+        const nextCache = changes[CACHE_STORAGE_KEY].newValue || {};
         state.cache = new Map(Object.entries(nextCache));
         restoreCachedImages(document);
       }
@@ -114,8 +123,8 @@
   }
 
   async function loadPersistentCache() {
-    const stored = await chrome.storage.local.get("translationCache");
-    state.cache = new Map(Object.entries(stored.translationCache || {}));
+    const stored = await chrome.storage.local.get(CACHE_STORAGE_KEY);
+    state.cache = new Map(Object.entries(stored[CACHE_STORAGE_KEY] || {}));
   }
 
   async function loadExcludedImages() {
@@ -382,7 +391,7 @@
     }
 
     const cacheKey = `${buildSettingsSignature(state.settings)}|${image.currentSrc || image.src}`;
-    const cached = state.cache.get(cacheKey);
+    const cached = normalizeCacheEntry(state.cache.get(cacheKey));
     if (cached) {
       resolveCachedDisplayUrl(cached).then((displayUrl) => {
         if (!displayUrl) {
@@ -527,14 +536,14 @@
       return;
     }
     if (task.status === "completed") {
-      const cacheUrl = task.cacheUrl || task.translatedUrl || "";
-      const displayUrl = task.translatedUrl || await resolveCachedDisplayUrl(cacheUrl);
+      const cacheEntry = normalizeCacheEntry(task.cacheEntry || task.translatedUrl || "");
+      const displayUrl = task.translatedUrl || await resolveCachedDisplayUrl(cacheEntry);
       if (!displayUrl) {
         showToast("图片已生成，但结果图加载失败");
         return;
       }
-      applyTranslatedImage(task.imageId, displayUrl, cacheUrl || displayUrl);
-      await persistCacheEntry(task.imageUrl || image?.dataset.itxOriginalSrc || image?.currentSrc || image?.src || "", cacheUrl || displayUrl);
+      applyTranslatedImage(task.imageId, displayUrl, cacheEntry || displayUrl);
+      await persistCacheEntry(task.imageUrl || image?.dataset.itxOriginalSrc || image?.currentSrc || image?.src || "", cacheEntry || displayUrl);
       if (state.activeImage === image) {
         renderHoverButton("completed");
       }
@@ -542,14 +551,15 @@
     }
   }
 
-  function applyTranslatedImage(imageId, translatedUrl, cacheUrl = translatedUrl) {
+  function applyTranslatedImage(imageId, translatedUrl, cacheEntry = translatedUrl) {
     const image = document.querySelector(`img[data-itx-image-id="${CSS.escape(imageId)}"]`);
     if (!image) {
       return;
     }
-    if (image.dataset.itxTranslated === "true" && image.dataset.itxCacheUrl === cacheUrl) {
+    const cacheFingerprint = getCacheEntryFingerprint(cacheEntry);
+    if (image.dataset.itxTranslated === "true" && image.dataset.itxCacheUrl === cacheFingerprint) {
       ensureControlHost(image, translatedUrl);
-      setImageState(imageId, { status: "completed", translatedUrl, cacheUrl });
+      setImageState(imageId, { status: "completed", translatedUrl, cacheEntry });
       return;
     }
     if (!image.dataset.itxOriginalSrc) {
@@ -557,11 +567,11 @@
     }
     runWithoutObserver(() => {
       image.dataset.itxTranslatedSrc = translatedUrl;
-      image.dataset.itxCacheUrl = cacheUrl;
+      image.dataset.itxCacheUrl = cacheFingerprint;
       image.dataset.itxTranslated = "true";
       ensureControlHost(image, translatedUrl);
     });
-    setImageState(imageId, { status: "completed", translatedUrl, cacheUrl });
+    setImageState(imageId, { status: "completed", translatedUrl, cacheEntry });
   }
 
   function restoreImage(imageId) {
@@ -897,27 +907,29 @@
     }, 2400);
   }
 
-  async function persistCacheEntry(originalImageUrl, translatedUrl) {
-    if (!originalImageUrl || !translatedUrl || !/^https?:\/\//i.test(translatedUrl)) {
+  async function persistCacheEntry(originalImageUrl, cacheInput) {
+    const cacheEntry = normalizeCacheEntry(cacheInput);
+    if (!originalImageUrl || !cacheEntry) {
       return;
     }
     const cacheKey = `${buildSettingsSignature(state.settings)}|${originalImageUrl}`;
-    state.cache.set(cacheKey, translatedUrl);
+    state.cache.set(cacheKey, cacheEntry);
     await chrome.storage.local.set({
-      translationCache: Object.fromEntries(state.cache.entries())
+      [CACHE_STORAGE_KEY]: Object.fromEntries(state.cache.entries())
     });
   }
 
-  async function resolveCachedDisplayUrl(cachedUrl) {
-    if (!cachedUrl) {
+  async function resolveCachedDisplayUrl(cacheInput) {
+    const cacheEntry = normalizeCacheEntry(cacheInput);
+    if (!cacheEntry) {
       return "";
     }
-    if (/^data:image\//i.test(cachedUrl)) {
-      return cachedUrl;
+    if (cacheEntry.type === "inline_data_url") {
+      return cacheEntry.value;
     }
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.RESOLVE_IMAGE_FOR_DISPLAY,
-      payload: { url: cachedUrl }
+      payload: { cacheEntry }
     });
     if (!response?.ok) {
       console.error("缓存结果解析失败", response?.error || response);
@@ -945,11 +957,11 @@
       if (!imageUrl) {
         continue;
       }
-      const cached = state.cache.get(`${buildSettingsSignature(state.settings)}|${imageUrl}`);
+      const cached = normalizeCacheEntry(state.cache.get(`${buildSettingsSignature(state.settings)}|${imageUrl}`));
       if (!cached) {
         continue;
       }
-      if (image.dataset.itxTranslated === "true" && image.dataset.itxCacheUrl === cached) {
+      if (image.dataset.itxTranslated === "true" && image.dataset.itxCacheUrl === getCacheEntryFingerprint(cached)) {
         continue;
       }
       const imageId = ensureImageId(image);
@@ -962,7 +974,7 @@
         status: "completed",
         imageUrl,
         translatedUrl: displayUrl,
-        cacheUrl: cached
+        cacheEntry: cached
       });
     }
   }

@@ -216,6 +216,45 @@ function buildSettingsSignature(settings) {
   ].join("|");
 }
 
+function normalizeCacheEntry(input) {
+  if (!input) {
+    return null;
+  }
+  if (typeof input === "string") {
+    return {
+      type: /^data:image\//i.test(input) ? "inline_data_url" : "remote_url",
+      value: input
+    };
+  }
+  if (typeof input === "object") {
+    if (input.type === "remote_url" && typeof input.value === "string") {
+      return { type: "remote_url", value: input.value };
+    }
+    if (input.type === "inline_data_url" && typeof input.value === "string") {
+      return { type: "inline_data_url", value: input.value };
+    }
+    if (input.type === "blob_ref" && typeof input.blobKey === "string") {
+      return {
+        type: "blob_ref",
+        blobKey: input.blobKey,
+        mimeType: typeof input.mimeType === "string" ? input.mimeType : "image/png"
+      };
+    }
+  }
+  return null;
+}
+
+function getCacheEntryFingerprint(input) {
+  const entry = normalizeCacheEntry(input);
+  if (!entry) {
+    return "";
+  }
+  if (entry.type === "blob_ref") {
+    return `blob:${entry.blobKey}`;
+  }
+  return `${entry.type}:${entry.value}`;
+}
+
 if (typeof globalThis !== "undefined") {
   globalThis.AppShared = {
     DEFAULT_PROMPT,
@@ -231,6 +270,8 @@ if (typeof globalThis !== "undefined") {
     safeJsonParse,
     maskSecret,
     normalizeBaseUrl,
-    buildSettingsSignature
+    buildSettingsSignature,
+    normalizeCacheEntry,
+    getCacheEntryFingerprint
   };
 }
